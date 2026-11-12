@@ -22,7 +22,7 @@ st.markdown("# 🎓 St. Mary's High School Ziroobwe")
 st.caption("100% Offline Local Management Information System")
 
 # Sidebar Navigation Role Selector
-role = st.sidebar.selectbox("Select Portal", ["Director of Studies (DOS)", "Bursar", "Head Teacher"])
+role = st.sidebar.selectbox("Select Portal", ["Director of Studies (DOS)", "Bursar", "Head Teacher"], key="sidebar_role_select")
 
 conn = get_connection()
 
@@ -38,11 +38,11 @@ if role == "Director of Studies (DOS)":
             with col1:
                 s_id = st.text_input("Unique Student ID (e.g., SMHS-002)")
                 fullname = st.text_input("Full Name")
-                level = st.selectbox("Level", ["O-Level", "A-Level"])
+                level = st.selectbox("Level", ["O-Level", "A-Level"], key="reg_level")
             with col2:
-                class_name = st.selectbox("Class", ["S.1", "S.2", "S.3", "S.4", "S.5", "S.6"])
-                stream = st.selectbox("Stream", ["East", "West", "North", "South"])
-                boarding = st.selectbox("Boarding Status", ["Boarding", "Day"])
+                class_name = st.selectbox("Class", ["S.1", "S.2", "S.3", "S.4", "S.5", "S.6"], key="reg_class")
+                stream = st.selectbox("Stream", ["East", "West", "North", "South"], key="reg_stream")
+                boarding = st.selectbox("Boarding Status", ["Boarding", "Day"], key="reg_boarding")
             
             submitted = st.form_submit_button("Register Student")
             if submitted:
@@ -70,9 +70,9 @@ if role == "Director of Studies (DOS)":
     with tab3:
         st.subheader("Class-Wide Bulk Report Card Printing (O-Level)")
         
-        # Remember active class selection so you don't keep picking it repeatedly
-        selected_class = st.selectbox("Select Working Class", ["S.1", "S.2", "S.3", "S.4"])
-        term = st.selectbox("Select Term", ["Term I", "Term II", "Term III"])
+        # Locked-in working class selection with unique keys
+        selected_class = st.selectbox("Select Working Class", ["S.1", "S.2", "S.3", "S.4"], key="bulk_class_select")
+        term = st.selectbox("Select Term", ["Term I", "Term II", "Term III"], key="bulk_term_select")
         
         # Fetch students belonging to the selected class
         cursor = conn.execute("SELECT student_id, full_name, class_name, stream FROM students WHERE class_name = ?;", (selected_class,))
@@ -81,7 +81,7 @@ if role == "Director of Studies (DOS)":
         if class_students:
             st.info(f"Found {len(class_students)} student(s) in {selected_class}. Ready for bulk generation.")
             
-            if st.button(f"Generate All Report Cards for {selected_class}"):
+            if st.button(f"Generate All Report Cards for {selected_class}", key="gen_bulk_btn"):
                 # Official O-Level Subjects structure (with multi-papers for sciences/arts)
                 sample_subjects = [
                     ("Mathematics", "P1"), ("English", "P1"), 
@@ -96,21 +96,19 @@ if role == "Director of Studies (DOS)":
                     ("Kiswahili", "P1")
                 ]
                 
-                # Default mock marks generator for bulk print demonstration
                 marks_data = [(sub, paper, 75, "D1", "Excellent") for sub, paper in sample_subjects]
                 
-                # Combine PDFs or provide notice
                 st.success(f"Successfully generated report cards for all {len(class_students)} students in {selected_class}!")
                 
-                # Give download option for each or demo package
+                # Unique key prefix for each loop download button
                 for s in class_students:
                     pdf_bytes = generate_report_card(s[1], s[0], s[2], s[3], term, marks_data)
                     st.download_button(
-                        label=f"📥 Download Report: {s[1]} ({s[0]})",
+                        label=f"Download Report: {s[1]} ({s[0]})",
                         data=pdf_bytes,
                         file_name=f"{s[1]}_{selected_class}_Report.pdf",
                         mime="application/pdf",
-                        key=s[0]
+                        key=f"dl_btn_{s[0]}"
                     )
         else:
             st.warning(f"No students found registered under class {selected_class}. Register students in this class first.")
@@ -122,7 +120,7 @@ elif role == "Bursar":
     
     if staff_list:
         staff_dict = {f"{s[1]} ({s[2]})": s for s in staff_list}
-        selected_staff_label = st.selectbox("Select Staff Member", list(staff_dict.keys()))
+        selected_staff_label = st.selectbox("Select Staff Member", list(staff_dict.keys()), key="bursar_staff_select")
         s_data = staff_dict[selected_staff_label]
         
         st.write(f"**Staff ID:** {s_data[0]}")
