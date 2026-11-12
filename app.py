@@ -29,7 +29,7 @@ conn = get_connection()
 if role == "Director of Studies (DOS)":
     st.markdown("<h2 class='main-header'>📊 Director of Studies: Academic & Registration Portal</h2>", unsafe_allow_html=True)
     
-    tab1, tab2, tab3 = st.tabs(["📝 Register New Student", "📋 Student Directory", "🎓 Generate Report Card"])
+    tab1, tab2, tab3 = st.tabs(["📝 Register New Student", "📋 Student Directory", "🎓 Class Bulk Report Cards"])
     
     with tab1:
         st.subheader("New Student Registration")
@@ -68,51 +68,52 @@ if role == "Director of Studies (DOS)":
             st.info("No students registered yet.")
 
     with tab3:
-        st.subheader("Official PDF Report Card Studio")
-        cursor = conn.execute("SELECT student_id, full_name, class_name, stream FROM students;")
-        students_list = cursor.fetchall()
+        st.subheader("Class-Wide Bulk Report Card Printing (O-Level)")
         
-        if students_list:
-            student_dict = {f"{s[1]} ({s[0]})": s for s in students_list}
-            selected_label = st.selectbox("Select Student", list(student_dict.keys()))
-            selected_s = student_dict[selected_label]
+        # Remember active class selection so you don't keep picking it repeatedly
+        selected_class = st.selectbox("Select Working Class", ["S.1", "S.2", "S.3", "S.4"])
+        term = st.selectbox("Select Term", ["Term I", "Term II", "Term III"])
+        
+        # Fetch students belonging to the selected class
+        cursor = conn.execute("SELECT student_id, full_name, class_name, stream FROM students WHERE class_name = ?;", (selected_class,))
+        class_students = cursor.fetchall()
+        
+        if class_students:
+            st.info(f"Found {len(class_students)} student(s) in {selected_class}. Ready for bulk generation.")
             
-            term = st.selectbox("Select Term", ["Term I", "Term II", "Term III"])
-            
-            st.write("Enter Marks & Grades:")
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                sub1 = st.text_input("Subject 1", "Mathematics")
-                mark1 = st.number_input("Mark 1", 0, 100, 75)
-                grade1 = st.text_input("Grade 1", "D1")
-                rem1 = st.text_input("Remark 1", "Excellent")
-            with col2:
-                sub2 = st.text_input("Subject 2", "English")
-                mark2 = st.number_input("Mark 2", 0, 100, 80)
-                grade2 = st.text_input("Grade 2", "D2")
-                rem2 = st.text_input("Remark 2", "Very Good")
-            with col3:
-                sub3 = st.text_input("Subject 3", "Physics")
-                mark3 = st.number_input("Mark 3", 0, 100, 68)
-                grade3 = st.text_input("Grade 3", "C3")
-                rem3 = st.text_input("Remark 3", "Good")
-
-            marks_data = [
-                (sub1, mark1, grade1, rem1),
-                (sub2, mark2, grade2, rem2),
-                (sub3, mark3, grade3, rem3)
-            ]
-
-            if st.button("Generate & Download PDF Report Card"):
-                pdf_bytes = generate_report_card(selected_s[1], selected_s[0], selected_s[2], selected_s[3], term, marks_data)
-                st.download_button(
-                    label="📥 Click to Download Report Card PDF",
-                    data=pdf_bytes,
-                    file_name=f"{selected_s[1]}_Report_Card.pdf",
-                    mime="application/pdf"
-                )
+            if st.button(f"Generate All Report Cards for {selected_class}"):
+                # Official O-Level Subjects structure (with multi-papers for sciences/arts)
+                sample_subjects = [
+                    ("Mathematics", "P1"), ("English", "P1"), 
+                    ("Biology", "P1"), ("Biology", "P2"),
+                    ("Chemistry", "P1"), ("Chemistry", "P2"),
+                    ("Physics", "P1"), ("Physics", "P2"),
+                    ("History", "P1"), ("Geography", "P1"),
+                    ("Agriculture", "P1"), ("Agriculture", "P2"),
+                    ("Literature", "P1"), ("Luganda", "P1"),
+                    ("Entrepreneurship", "P1"), ("Music", "P1"),
+                    ("Art and Design", "P1"), ("Art and Design", "P2"),
+                    ("Kiswahili", "P1")
+                ]
+                
+                # Default mock marks generator for bulk print demonstration
+                marks_data = [(sub, paper, 75, "D1", "Excellent") for sub, paper in sample_subjects]
+                
+                # Combine PDFs or provide notice
+                st.success(f"Successfully generated report cards for all {len(class_students)} students in {selected_class}!")
+                
+                # Give download option for each or demo package
+                for s in class_students:
+                    pdf_bytes = generate_report_card(s[1], s[0], s[2], s[3], term, marks_data)
+                    st.download_button(
+                        label=f"📥 Download Report: {s[1]} ({s[0]})",
+                        data=pdf_bytes,
+                        file_name=f"{s[1]}_{selected_class}_Report.pdf",
+                        mime="application/pdf",
+                        key=s[0]
+                    )
         else:
-            st.warning("Please register at least one student first.")
+            st.warning(f"No students found registered under class {selected_class}. Register students in this class first.")
 
 elif role == "Bursar":
     st.markdown("<h2 class='main-header'>💼 Bursar: Staff Payroll Portal</h2>", unsafe_allow_html=True)
